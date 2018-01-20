@@ -8,6 +8,7 @@ package imagemanager
 import (
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/vmware/dispatch/pkg/controller"
 
@@ -26,13 +27,16 @@ import (
 
 // ImageManagerFlags are configuration flags for the image manager
 var ImageManagerFlags = struct {
-	DbFile       string `long:"db-file" description:"Backend DB URL/Path" default:"./db.bolt"`
-	DbBackend    string `long:"db-backend" description:"Backend DB Name" default:"boltdb"`
-	DbUser       string `long:"db-username" description:"Backend DB Username" default:"dispatch"`
-	DbPassword   string `long:"db-password" description:"Backend DB Password" default:"dispatch"`
-	DbDatabase   string `long:"db-database" description:"Backend DB Name" default:"dispatch"`
-	OrgID        string `long:"organization" description:"(temporary) Static organization id" default:"dispatch"`
-	ResyncPeriod int    `long:"resync-period" description:"The time period (in seconds) to sync with image repository" default:"10"`
+	DbFile           string `long:"db-file" description:"Backend DB URL/Path" default:"./db.bolt"`
+	DbBackend        string `long:"db-backend" description:"Backend DB Name" default:"boltdb"`
+	DbUser           string `long:"db-username" description:"Backend DB Username" default:"dispatch"`
+	DbPassword       string `long:"db-password" description:"Backend DB Password" default:"dispatch"`
+	DbDatabase       string `long:"db-database" description:"Backend DB Name" default:"dispatch"`
+	OrgID            string `long:"organization" description:"(temporary) Static organization id" default:"dispatch"`
+	ResyncPeriod     int    `long:"resync-period" description:"The time period (in seconds) to sync with image repository" default:"10"`
+	BuildkitHost     string `long:"buildkit-host" description:"The address of buildkitd" default:"tcp://0.0.0.0:1234"`
+	RepositoryHost   string `long:"repository-host" description:"The docker repository URI"`
+	RepositoryConfig string `long:"repository-config" description:"The docker config file path (directory)"`
 }{}
 
 var filterNotDeleted = []entitystore.FilterStat{
@@ -170,6 +174,8 @@ func (h *Handlers) ConfigureHandlers(api middleware.RoutableAPI) {
 	}
 
 	initializeStatusMap()
+
+	os.Setenv("DOCKER_CONFIG", ImageManagerFlags.RepositoryConfig)
 
 	a.CookieAuth = func(token string) (interface{}, error) {
 

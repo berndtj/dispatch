@@ -10,13 +10,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
 	dockerTypes "github.com/docker/docker/api/types"
 	docker "github.com/docker/docker/client"
+	buildkit "github.com/moby/buildkit/client"
+	"github.com/moby/buildkit/client/llb"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/vmware/dispatch/pkg/entity-store"
 	"github.com/vmware/dispatch/pkg/trace"
@@ -32,11 +35,12 @@ type BaseImageBuilder struct {
 }
 
 type ImageBuilder struct {
-	imageChannel chan Image
-	done         chan bool
-	es           entitystore.EntityStore
-	dockerClient docker.ImageAPIClient
-	orgID        string
+	imageChannel   chan Image
+	done           chan bool
+	es             entitystore.EntityStore
+	dockerClient   docker.ImageAPIClient
+	buildkitClient *buildkit.Client
+	orgID          string
 }
 
 type imageStatusResult struct {
@@ -169,17 +173,15 @@ func (b *BaseImageBuilder) baseImageStatus() ([]entitystore.Entity, error) {
 // NewImageBuilder is the constructor for the ImageBuilder
 func NewImageBuilder(es entitystore.EntityStore) (*ImageBuilder, error) {
 	defer trace.Trace("NewBaseImageBuilder")()
-	dockerClient, err := docker.NewEnvClient()
+	c, err := buildkit.New(ImageManagerFlags.BuildkitHost)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error creating docker client")
 	}
 
 	return &ImageBuilder{
-		imageChannel: make(chan Image),
-		done:         make(chan bool),
-		es:           es,
-		dockerClient: dockerClient,
-		orgID:        ImageManagerFlags.OrgID,
+		es:             es,
+		buildkitClient: c,
+		orgID:          ImageManagerFlags.OrgID,
 	}, nil
 }
 
@@ -212,6 +214,44 @@ func (b *ImageBuilder) imageDelete(image *Image) error {
 		return errors.Wrapf(err, "Error deleting image entity %s/%s", image.OrganizationID, image.Name)
 	}
 	log.Printf("Successfully deleted image %s/%s", image.OrganizationID, image.Name)
+	return nil
+}
+
+func (b *ImageBuilder) imageCreate(image *Image) error {
+	var bi BaseImage
+	err := b.es.Get(b.orgID, image.BaseImageName, &bi)
+	if err != nil {
+		return errors.Wrapf(err, "Error getting base image entity %s/%s", image.OrganizationID, image.Name)
+	}
+	ctx := context.Background()
+	eg, ctx := errgroup.WithContext(ctx)
+	base := llb.Image(bi.DockerURL)
+	def, err := base.Marshal()
+	if err != nil {
+		return errors.Wrapf(err, "Error building image")
+	}
+	ch := make(chan *buildkit.SolveStatus)
+	opts := buildkit.SolveOpt{
+		Exporter:      "image",
+		ExporterAttrs: map[string]string{"name": fmt.Sprintf("%s/%s:%s", ImageManagerFlags.RepositoryHost, image.GetName(), image.GetID()), "push": "true"},
+	}
+	eg.Go(func() error {
+		err := b.buildkitClient.Solve(ctx, def, opts, ch)
+		return err
+	})
+	eg.Go(func() error {
+		for p := range ch {
+			for _, s := range p.Statuses {
+				log.Debugf("status: %s %s %d\n", s.Vertex, s.ID, s.Current)
+			}
+		}
+		return nil
+	})
+
+	err = eg.Wait()
+	if err != nil {
+		return errors.Wrapf(err, "Error pushing image")
+	}
 	return nil
 }
 

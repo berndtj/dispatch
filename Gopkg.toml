@@ -96,3 +96,34 @@
 [[constraint]]
   branch = "master"
   name = "golang.org/x/sync"
+
+[[override]]
+  name = "github.com/sirupsen/logrus"
+  version = "v1.0.4"
+
+[[constraint]]
+  name = "github.com/moby/buildkit"
+  branch = "master"
+
+[[override]]
+  name = "github.com/docker/docker"
+  revision = "6f723db8c6f0c7f0b252674a9673a25b5978db04"
+  source = "https://github.com/tonistiigi/docker.git"
+
+[[override]]
+  name = "github.com/docker/cli"
+  revision = "99576756eb3303b7af8102c502f21a912e3c1af6"
+  source = "https://github.com/tonistiigi/docker-cli.git"
+
+[[override]]
+  name = "github.com/docker/distribution"
+  revision = "5cb406d511b7b9163bff9b6439072e4892e5ae3b"
+
+[[override]]
+  name = "github.com/grpc-ecosystem/grpc-opentracing"
+  revision = "420e5c3331a082e0c873adeeab1819fe1749dd0b"
+  source = "https://github.com/tonistiigi/grpc-opentracing.git"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/containerd/console"

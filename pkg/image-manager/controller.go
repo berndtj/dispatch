@@ -99,7 +99,12 @@ func (h *imageEntityHandler) Add(obj entitystore.Entity) (err error) {
 
 	defer func() { h.Store.UpdateWithError(i, err) }()
 
-	return
+	i.Status = entitystore.StatusREADY
+	if err := h.Builder.imageCreate(i); err != nil {
+		i.Status = entitystore.StatusERROR
+		i.Reason = []string{err.Error()}
+	}
+	return nil
 }
 
 func (h *imageEntityHandler) Update(obj entitystore.Entity) error {
