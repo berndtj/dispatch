@@ -106,6 +106,10 @@ dispatch:
   #  username:
   #  email:
   #  password:
+  service:
+    catalog: k8sservicecatalog
+    k8sservicecatalog:
+      namespace: catalog
   oauth2Proxy:
     provider: github
     oidcIssuerURL:
