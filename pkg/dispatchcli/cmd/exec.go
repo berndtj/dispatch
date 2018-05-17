@@ -14,9 +14,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/vmware/dispatch/pkg/api/v1"
-	"github.com/vmware/dispatch/pkg/dispatchcli/cmd/utils"
 	"github.com/vmware/dispatch/pkg/dispatchcli/i18n"
-	fnrunner "github.com/vmware/dispatch/pkg/function-manager/gen/client/runner"
 )
 
 var (
@@ -68,32 +66,19 @@ func runExec(out, errOut io.Writer, cmd *cobra.Command, args []string) error {
 		return err
 	}
 	run := &v1.Run{
-		Blocking: execWait,
-		Input:    input,
-		Secrets:  execSecrets,
+		Blocking:     execWait,
+		Input:        input,
+		Secrets:      execSecrets,
+		FunctionName: functionName,
 	}
-
-	params := &fnrunner.RunFunctionParams{
-		Body:         run,
-		Context:      context.Background(),
-		FunctionName: &functionName,
-		Tags:         []string{},
-	}
-	utils.AppendApplication(&params.Tags, cmdFlagApplication)
 
 	client := functionManagerClient()
-	executed, executing, err := client.Runner.RunFunction(params, GetAuthInfoWriter())
+	functionResult, err := client.RunFunction(context.TODO(), run)
 	if err != nil {
-		return formatAPIError(err, params)
+		return formatAPIError(err, run)
 	}
-	if executed != nil {
-		return formatExecOutput(out, executed.Payload)
-	} else if executing != nil {
-		return formatExecOutput(out, executing.Payload)
-	} else {
-		// We should never get here... just in case
-		return fmt.Errorf("Unexepected response from API")
-	}
+
+	return formatExecOutput(out, functionResult)
 }
 
 func formatExecOutput(out io.Writer, run *v1.Run) error {

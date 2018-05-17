@@ -20,7 +20,6 @@ import (
 
 	"github.com/vmware/dispatch/pkg/api/v1"
 	"github.com/vmware/dispatch/pkg/dispatchcli/i18n"
-	fnstore "github.com/vmware/dispatch/pkg/function-manager/gen/client/store"
 )
 
 var (
@@ -73,16 +72,11 @@ func CallCreateFunction(f interface{}) error {
 	client := functionManagerClient()
 	function := f.(*v1.Function)
 
-	params := &fnstore.AddFunctionParams{
-		Body:    function,
-		Context: context.Background(),
-	}
-
-	created, err := client.Store.AddFunction(params, GetAuthInfoWriter())
+	created, err := client.CreateFunction(context.TODO(), function)
 	if err != nil {
-		return formatAPIError(err, params)
+		return formatAPIError(err, function)
 	}
-	*function = *created.Payload
+	*function = *created
 	return nil
 }
 

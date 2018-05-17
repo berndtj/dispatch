@@ -18,8 +18,6 @@ import (
 	serviceinstanceclient "github.com/vmware/dispatch/pkg/service-manager/gen/client/service_instance"
 )
 
-// NO TESTS
-
 // ServicesClient defines the services client interface
 type ServicesClient interface {
 	// Service Instances

@@ -10,7 +10,6 @@ import (
 	"io"
 	"time"
 
-	"github.com/go-openapi/strfmt"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
@@ -55,19 +54,15 @@ func NewCmdGetRun(out io.Writer, errOut io.Writer) *cobra.Command {
 
 func getFunctionRun(out, errOut io.Writer, cmd *cobra.Command, args []string) error {
 	client := functionManagerClient()
-	params := &fnrunner.GetRunParams{
-		FunctionName: &args[0],
-		RunName:      strfmt.UUID(args[1]),
-		Context:      context.Background(),
-		Tags:         []string{},
-	}
-	utils.AppendApplication(&params.Tags, cmdFlagApplication)
 
-	resp, err := client.Runner.GetRun(params, GetAuthInfoWriter())
+	fnName := args[0]
+	runName := args[1]
+
+	resp, err := client.GetFunctionRun(context.TODO(), fnName, runName)
 	if err != nil {
-		return formatAPIError(err, params)
+		return formatAPIError(err, runName)
 	}
-	return formatRunOutput(out, false, []*v1.Run{resp.Payload})
+	return formatRunOutput(out, false, []v1.Run{*resp})
 }
 
 func getRuns(out, errOut io.Writer, cmd *cobra.Command, args []string) error {
@@ -78,11 +73,11 @@ func getRuns(out, errOut io.Writer, cmd *cobra.Command, args []string) error {
 	}
 	utils.AppendApplication(&params.Tags, cmdFlagApplication)
 
-	resp, err := client.Runner.GetRuns(params, GetAuthInfoWriter())
+	resp, err := client.ListRuns(context.TODO())
 	if err != nil {
 		return formatAPIError(err, params)
 	}
-	return formatRunOutput(out, true, resp.Payload)
+	return formatRunOutput(out, true, resp)
 }
 
 func getFunctionRuns(out, errOut io.Writer, cmd *cobra.Command, args []string) error {
@@ -93,17 +88,16 @@ func getFunctionRuns(out, errOut io.Writer, cmd *cobra.Command, args []string) e
 	}
 	utils.AppendApplication(&params.Tags, cmdFlagApplication)
 
-	if len(args) > 0 {
-		params.FunctionName = &args[0]
-	}
-	resp, err := client.Runner.GetRuns(params, GetAuthInfoWriter())
+	fnName := args[0]
+
+	resp, err := client.ListFunctionRuns(context.TODO(), fnName)
 	if err != nil {
 		return formatAPIError(err, params)
 	}
-	return formatRunOutput(out, true, resp.Payload)
+	return formatRunOutput(out, true, resp)
 }
 
-func formatRunOutput(out io.Writer, list bool, runs []*v1.Run) error {
+func formatRunOutput(out io.Writer, list bool, runs []v1.Run) error {
 	if dispatchConfig.JSON {
 		encoder := json.NewEncoder(out)
 		encoder.SetIndent("", "    ")

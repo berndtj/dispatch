@@ -18,8 +18,6 @@ import (
 	"github.com/vmware/dispatch/pkg/function-manager/gen/client/store"
 )
 
-// NO TESTS
-
 // FunctionsClient defines the function client interface
 type FunctionsClient interface {
 	// Function Runner
@@ -43,7 +41,7 @@ type DefaultFunctionsClient struct {
 }
 
 // NewFunctionsClient is used to create a new functions client
-func NewFunctionsClient(host string, auth runtime.ClientAuthInfoWriter) FunctionsClient {
+func NewFunctionsClient(host string, auth runtime.ClientAuthInfoWriter) *DefaultFunctionsClient {
 	transport := DefaultHTTPClient(host, swaggerclient.DefaultBasePath)
 	return &DefaultFunctionsClient{
 		client: swaggerclient.New(transport, strfmt.Default),

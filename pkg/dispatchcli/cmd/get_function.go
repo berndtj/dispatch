@@ -15,9 +15,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/vmware/dispatch/pkg/api/v1"
-	"github.com/vmware/dispatch/pkg/dispatchcli/cmd/utils"
 	"github.com/vmware/dispatch/pkg/dispatchcli/i18n"
-	fnstore "github.com/vmware/dispatch/pkg/function-manager/gen/client/store"
 )
 
 var (
@@ -52,33 +50,24 @@ func NewCmdGetFunction(out io.Writer, errOut io.Writer) *cobra.Command {
 
 func getFunction(out, errOut io.Writer, cmd *cobra.Command, args []string) error {
 	client := functionManagerClient()
-	params := &fnstore.GetFunctionParams{
-		FunctionName: args[0],
-		Context:      context.Background(),
-		Tags:         []string{},
-	}
-	utils.AppendApplication(&params.Tags, cmdFlagApplication)
+	functionName := args[0]
 
-	resp, err := client.Store.GetFunction(params, GetAuthInfoWriter())
+	resp, err := client.GetFunction(context.TODO(), functionName)
 	if err != nil {
-		return formatAPIError(err, params)
+		return formatAPIError(err, functionName)
 	}
-	return formatFunctionOutput(out, false, []*v1.Function{resp.Payload})
+
+	return formatFunctionOutput(out, false, []*v1.Function{resp})
 }
 
 func getFunctions(out, errOut io.Writer, cmd *cobra.Command) error {
 	client := functionManagerClient()
-	params := &fnstore.GetFunctionsParams{
-		Context: context.Background(),
-		Tags:    []string{},
-	}
-	utils.AppendApplication(&params.Tags, cmdFlagApplication)
 
-	resp, err := client.Store.GetFunctions(params, GetAuthInfoWriter())
+	resp, err := client.ListFunctions(context.TODO())
 	if err != nil {
-		return formatAPIError(err, params)
+		return formatAPIError(err, nil)
 	}
-	return formatFunctionOutput(out, true, resp.Payload)
+	return formatFunctionOutput(out, true, resp)
 }
 
 func formatFunctionOutput(out io.Writer, list bool, functions []*v1.Function) error {

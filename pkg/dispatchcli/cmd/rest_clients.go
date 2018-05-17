@@ -12,11 +12,11 @@ import (
 
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
+	"github.com/vmware/dispatch/pkg/client"
 
 	apiclient "github.com/vmware/dispatch/pkg/api-manager/gen/client"
 	applicationclient "github.com/vmware/dispatch/pkg/application-manager/gen/client"
 	eventclient "github.com/vmware/dispatch/pkg/event-manager/gen/client"
-	fnclient "github.com/vmware/dispatch/pkg/function-manager/gen/client"
 	identitymanager "github.com/vmware/dispatch/pkg/identity-manager/gen/client"
 	imageclient "github.com/vmware/dispatch/pkg/image-manager/gen/client"
 	secretclient "github.com/vmware/dispatch/pkg/secret-store/gen/client"
@@ -43,8 +43,12 @@ func httpTransport(path string) *httptransport.Runtime {
 	return httptransport.NewWithClient(host, path, []string{"https"}, tlsClient())
 }
 
-func functionManagerClient() *fnclient.FunctionManager {
-	return fnclient.New(httpTransport(fnclient.DefaultBasePath), strfmt.Default)
+func getDispatchHost() string {
+	return fmt.Sprintf("%s:%d", dispatchConfig.Host, dispatchConfig.Port)
+}
+
+func functionManagerClient() client.FunctionsClient {
+	return client.NewFunctionsClient(getDispatchHost(), GetAuthInfoWriter())
 }
 
 func imageManagerClient() *imageclient.ImageManager {

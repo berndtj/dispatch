@@ -17,8 +17,6 @@ import (
 	secretclient "github.com/vmware/dispatch/pkg/secret-store/gen/client/secret"
 )
 
-// NO TESTS
-
 // SecretsClient defines the secrets client interface
 type SecretsClient interface {
 	CreateSecret(ctx context.Context, organizationID string, secret *v1.Secret) (*v1.Secret, error)

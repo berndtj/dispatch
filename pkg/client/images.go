@@ -17,8 +17,6 @@ import (
 	imageclient "github.com/vmware/dispatch/pkg/image-manager/gen/client/image"
 )
 
-// NO TESTS
-
 // ImagesClient defines the image client interface
 type ImagesClient interface {
 	// Images
