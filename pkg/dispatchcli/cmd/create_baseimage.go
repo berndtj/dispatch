@@ -17,6 +17,7 @@ import (
 
 	"github.com/vmware/dispatch/pkg/api/v1"
 	"github.com/vmware/dispatch/pkg/dispatchcli/i18n"
+	imageclient "github.com/vmware/dispatch/pkg/image-manager/gen/client"
 	baseimage "github.com/vmware/dispatch/pkg/image-manager/gen/client/base_image"
 )
 
@@ -38,7 +39,8 @@ func NewCmdCreateBaseImage(out io.Writer, errOut io.Writer) *cobra.Command {
 		Example: createBaseImageExample,
 		Args:    cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			err := createBaseImage(out, errOut, cmd, args)
+			ic := NewBaseImageClient()
+			err := createBaseImage(out, errOut, cmd, args, ic)
 			CheckErr(err)
 		},
 	}
@@ -46,30 +48,45 @@ func NewCmdCreateBaseImage(out io.Writer, errOut io.Writer) *cobra.Command {
 	return cmd
 }
 
-// CallCreateBaseImage makes the API call to create a base image
-func CallCreateBaseImage(bi interface{}) error {
-	client := imageManagerClient()
-	body := bi.(*v1.BaseImage)
+// BaseImageClient is a client interface for base image operations
+type BaseImageClient interface {
+	Add(i interface{}) error
+}
+
+type defaultBaseImageClient struct {
+	client *imageclient.ImageManager
+}
+
+func (c *defaultBaseImageClient) Add(i interface{}) error {
+	baseImageModel := i.(*v1.BaseImage)
+
 	params := &baseimage.AddBaseImageParams{
-		Body:    body,
+		Body:    baseImageModel,
 		Context: context.Background(),
 	}
 
-	created, err := client.BaseImage.AddBaseImage(params, GetAuthInfoWriter())
+	created, err := c.client.BaseImage.AddBaseImage(params, GetAuthInfoWriter())
 	if err != nil {
 		return formatAPIError(err, params)
 	}
-	*body = *created.Payload
+	*baseImageModel = *created.Payload
 	return nil
 }
 
-func createBaseImage(out, errOut io.Writer, cmd *cobra.Command, args []string) error {
+// NewBaseImageClient is the constructor for a defaultBaseImageClient
+func NewBaseImageClient() *defaultBaseImageClient {
+	return &defaultBaseImageClient{
+		client: imageManagerClient(),
+	}
+}
+
+func createBaseImage(out, errOut io.Writer, cmd *cobra.Command, args []string, ic BaseImageClient) error {
 	baseImage := &v1.BaseImage{
 		Name:      &args[0],
 		DockerURL: &args[1],
 		Language:  swag.String(language),
 	}
-	err := CallCreateBaseImage(baseImage)
+	err := ic.Add(baseImage)
 	if err != nil {
 		return err
 	}

@@ -14,7 +14,8 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 
-	apiclient "github.com/vmware/dispatch/pkg/api-manager/gen/client/endpoint"
+	mgrclient "github.com/vmware/dispatch/pkg/api-manager/gen/client"
+	"github.com/vmware/dispatch/pkg/api-manager/gen/client/endpoint"
 	"github.com/vmware/dispatch/pkg/api/v1"
 	"github.com/vmware/dispatch/pkg/dispatchcli/i18n"
 )
@@ -48,7 +49,8 @@ func NewCmdCreateAPI(out io.Writer, errOut io.Writer) *cobra.Command {
 		Example: createAPIExample,
 		Args:    cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			err := createAPI(out, errOut, cmd, args)
+			ec := NewEndpointClient()
+			err := createAPI(out, errOut, cmd, args, ec)
 			CheckErr(err)
 		},
 	}
@@ -64,7 +66,39 @@ func NewCmdCreateAPI(out io.Writer, errOut io.Writer) *cobra.Command {
 	return cmd
 }
 
-func createAPI(out, errOut io.Writer, cmd *cobra.Command, args []string) error {
+// EndpointClient is a client interface for API endpoint operations
+type EndpointClient interface {
+	Add(i interface{}) error
+}
+
+type defaultEndpointClient struct {
+	client *mgrclient.APIManager
+}
+
+func (c *defaultEndpointClient) Add(i interface{}) error {
+	apiModel := i.(*v1.API)
+
+	params := &endpoint.AddAPIParams{
+		Body:    apiModel,
+		Context: context.Background(),
+	}
+
+	created, err := c.client.Endpoint.AddAPI(params, GetAuthInfoWriter())
+	if err != nil {
+		return formatAPIError(err, params)
+	}
+	*apiModel = *created.Payload
+	return nil
+}
+
+// NewEndpointClient is the constructor for a defaultEndpointClient
+func NewEndpointClient() *defaultEndpointClient {
+	return &defaultEndpointClient{
+		client: apiManagerClient(),
+	}
+}
+
+func createAPI(out, errOut io.Writer, cmd *cobra.Command, args []string, ec EndpointClient) error {
 
 	apiName := args[0]
 	function := args[1]
@@ -93,21 +127,15 @@ func createAPI(out, errOut io.Writer, cmd *cobra.Command, args []string) error {
 		})
 	}
 
-	params := &apiclient.AddAPIParams{
-		Body:    api,
-		Context: context.Background(),
-	}
-	client := apiManagerClient()
-
-	created, err := client.Endpoint.AddAPI(params, GetAuthInfoWriter())
+	err := ec.Add(api)
 	if err != nil {
-		return formatAPIError(err, params)
+		return err
 	}
 	if dispatchConfig.JSON {
 		encoder := json.NewEncoder(out)
 		encoder.SetIndent("", "    ")
-		return encoder.Encode(*created.Payload)
+		return encoder.Encode(api)
 	}
-	fmt.Fprintf(out, "Created api: %s\n", *created.Payload.Name)
+	fmt.Fprintf(out, "Created api: %s\n", *api.Name)
 	return nil
 }
