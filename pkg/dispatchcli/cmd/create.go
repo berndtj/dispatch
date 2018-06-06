@@ -33,7 +33,8 @@ var (
 	workDir       = i18n.T(``)
 )
 
-type modelAction func(interface{}) error
+// ModelAction is the function type for CLI actions
+type ModelAction func(interface{}) error
 
 type importFunction struct {
 	v1.Function
@@ -52,7 +53,7 @@ func resolveFileReference(ref string) (string, error) {
 	return ref, nil
 }
 
-func importFile(out io.Writer, errOut io.Writer, cmd *cobra.Command, args []string, actionMap map[string]modelAction, actionName string) error {
+func importFile(out io.Writer, errOut io.Writer, cmd *cobra.Command, args []string, actionMap map[string]ModelAction, actionName string) error {
 	fullPath := path.Join(workDir, file)
 	b, err := ioutil.ReadFile(fullPath)
 	if err != nil {
@@ -270,10 +271,14 @@ func NewCmdCreate(out io.Writer, errOut io.Writer) *cobra.Command {
 				runHelp(cmd, args)
 				return
 			}
-			createMap := map[string]modelAction{
-				utils.ImageKind:           CallCreateImage,
-				utils.BaseImageKind:       CallCreateBaseImage,
-				utils.FunctionKind:        CallCreateFunction,
+
+			fnClient := functionManagerClient()
+			imgClient := imageManagerClient()
+
+			createMap := map[string]ModelAction{
+				utils.ImageKind:           CallCreateImage(imgClient),
+				utils.BaseImageKind:       CallCreateBaseImage(imgClient),
+				utils.FunctionKind:        CallCreateFunction(fnClient),
 				utils.SecretKind:          CallCreateSecret,
 				utils.ServiceInstanceKind: CallCreateServiceInstance,
 				utils.PolicyKind:          CallCreatePolicy,

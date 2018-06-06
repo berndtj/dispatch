@@ -18,7 +18,6 @@ import (
 	applicationclient "github.com/vmware/dispatch/pkg/application-manager/gen/client"
 	eventclient "github.com/vmware/dispatch/pkg/event-manager/gen/client"
 	identitymanager "github.com/vmware/dispatch/pkg/identity-manager/gen/client"
-	imageclient "github.com/vmware/dispatch/pkg/image-manager/gen/client"
 	secretclient "github.com/vmware/dispatch/pkg/secret-store/gen/client"
 	serviceclient "github.com/vmware/dispatch/pkg/service-manager/gen/client"
 )
@@ -51,8 +50,8 @@ func functionManagerClient() client.FunctionsClient {
 	return client.NewFunctionsClient(getDispatchHost(), GetAuthInfoWriter())
 }
 
-func imageManagerClient() *imageclient.ImageManager {
-	return imageclient.New(httpTransport(imageclient.DefaultBasePath), strfmt.Default)
+func imageManagerClient() client.ImagesClient {
+	return client.NewImagesClient(getDispatchHost(), GetAuthInfoWriter())
 }
 
 func secretStoreClient() *secretclient.SecretStore {

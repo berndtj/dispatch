@@ -14,14 +14,13 @@ import (
 	"github.com/vmware/dispatch/pkg/api-manager/gen/client/endpoint"
 	"github.com/vmware/dispatch/pkg/api/v1"
 	"github.com/vmware/dispatch/pkg/application-manager/gen/client/application"
+	"github.com/vmware/dispatch/pkg/client"
 	"github.com/vmware/dispatch/pkg/dispatchcli/cmd/utils"
 	"github.com/vmware/dispatch/pkg/dispatchcli/i18n"
 	"github.com/vmware/dispatch/pkg/event-manager/gen/client/drivers"
 	"github.com/vmware/dispatch/pkg/event-manager/gen/client/subscriptions"
 	"github.com/vmware/dispatch/pkg/identity-manager/gen/client/policy"
 	"github.com/vmware/dispatch/pkg/identity-manager/gen/client/serviceaccount"
-	"github.com/vmware/dispatch/pkg/image-manager/gen/client/base_image"
-	"github.com/vmware/dispatch/pkg/image-manager/gen/client/image"
 	"github.com/vmware/dispatch/pkg/secret-store/gen/client/secret"
 	pkgUtils "github.com/vmware/dispatch/pkg/utils"
 )
@@ -46,14 +45,17 @@ func NewCmdUpdate(out io.Writer, errOut io.Writer) *cobra.Command {
 				return
 			}
 
-			updateMap := map[string]modelAction{
+			fnClient := functionManagerClient()
+			imgClient := imageManagerClient()
+
+			updateMap := map[string]ModelAction{
 				pkgUtils.APIKind:            CallUpdateAPI,
 				pkgUtils.ApplicationKind:    CallUpdateApplication,
-				pkgUtils.BaseImageKind:      CallUpdateBaseImage,
+				pkgUtils.BaseImageKind:      CallUpdateBaseImage(imgClient),
 				pkgUtils.DriverKind:         CallUpdateDriver,
 				pkgUtils.DriverTypeKind:     CallUpdateDriverType,
-				pkgUtils.FunctionKind:       CallUpdateFunction,
-				pkgUtils.ImageKind:          CallUpdateImage,
+				pkgUtils.FunctionKind:       CallUpdateFunction(fnClient),
+				pkgUtils.ImageKind:          CallUpdateImage(imgClient),
 				pkgUtils.SecretKind:         CallUpdateSecret,
 				pkgUtils.SubscriptionKind:   CallUpdateSubscription,
 				pkgUtils.PolicyKind:         CallUpdatePolicy,
@@ -104,18 +106,16 @@ func CallUpdateApplication(input interface{}) error {
 }
 
 // CallUpdateBaseImage updates a base image
-func CallUpdateBaseImage(input interface{}) error {
-	baseImage := input.(*v1.BaseImage)
-	params := base_image.NewUpdateBaseImageByNameParams()
-	params.BaseImageName = *baseImage.Name
-	params.Body = baseImage
-	_, err := imageManagerClient().BaseImage.UpdateBaseImageByName(params, GetAuthInfoWriter())
+func CallUpdateBaseImage(c client.ImagesClient) ModelAction {
+	return func(input interface{}) error {
+		baseImage := input.(*v1.BaseImage)
+		_, err := c.UpdateBaseImage(context.TODO(), dispatchConfig.Organization, baseImage)
+		if err != nil {
+			return formatAPIError(err, *baseImage.Name)
+		}
 
-	if err != nil {
-		return formatAPIError(err, params)
+		return nil
 	}
-
-	return nil
 }
 
 // CallUpdateDriver makes the API call to update an event driver
@@ -147,18 +147,17 @@ func CallUpdateDriverType(input interface{}) error {
 }
 
 // CallUpdateImage makes the service call to update an image.
-func CallUpdateImage(input interface{}) error {
-	img := input.(*v1.Image)
-	params := image.NewUpdateImageByNameParams()
-	params.ImageName = *img.Name
-	params.Body = img
-	_, err := imageManagerClient().Image.UpdateImageByName(params, GetAuthInfoWriter())
+func CallUpdateImage(c client.ImagesClient) ModelAction {
+	return func(input interface{}) error {
+		img := input.(*v1.Image)
+		_, err := c.UpdateImage(context.TODO(), dispatchConfig.Organization, img)
 
-	if err != nil {
-		return formatAPIError(err, params)
+		if err != nil {
+			return formatAPIError(err, *img.Name)
+		}
+
+		return nil
 	}
-
-	return nil
 }
 
 // CallUpdatePolicy updates a policy

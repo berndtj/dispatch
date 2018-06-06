@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/vmware/dispatch/pkg/api/v1"
+	"github.com/vmware/dispatch/pkg/client"
 	"github.com/vmware/dispatch/pkg/dispatchcli/i18n"
 )
 
@@ -35,7 +36,8 @@ func NewCmdDeleteFunction(out io.Writer, errOut io.Writer) *cobra.Command {
 		Args:    cobra.ExactArgs(1),
 		Aliases: []string{"functions"},
 		Run: func(cmd *cobra.Command, args []string) {
-			err := deleteFunction(out, errOut, cmd, args)
+			c := functionManagerClient()
+			err := deleteFunction(out, errOut, cmd, args, c)
 			CheckErr(err)
 		},
 	}
@@ -44,23 +46,24 @@ func NewCmdDeleteFunction(out io.Writer, errOut io.Writer) *cobra.Command {
 }
 
 // CallDeleteFunction makes the API call to delete a function
-func CallDeleteFunction(i interface{}) error {
-	client := functionManagerClient()
-	functionModel := i.(*v1.Function)
+func CallDeleteFunction(c client.FunctionsClient) ModelAction {
+	return func(i interface{}) error {
+		functionModel := i.(*v1.Function)
 
-	deleted, err := client.DeleteFunction(context.Background(), *functionModel.Name)
-	if err != nil {
-		return formatAPIError(err, functionModel)
+		deleted, err := c.DeleteFunction(context.Background(), dispatchConfig.Organization, *functionModel.Name)
+		if err != nil {
+			return formatAPIError(err, functionModel)
+		}
+		*functionModel = *deleted
+		return nil
 	}
-	*functionModel = *deleted
-	return nil
 }
 
-func deleteFunction(out, errOut io.Writer, cmd *cobra.Command, args []string) error {
+func deleteFunction(out, errOut io.Writer, cmd *cobra.Command, args []string, c client.FunctionsClient) error {
 	functionModel := v1.Function{
 		Name: &args[0],
 	}
-	err := CallDeleteFunction(&functionModel)
+	err := CallDeleteFunction(c)(&functionModel)
 	if err != nil {
 		return err
 	}

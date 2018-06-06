@@ -9,16 +9,19 @@ import (
 	"context"
 
 	"github.com/vmware/dispatch/pkg/api/v1"
+	"github.com/vmware/dispatch/pkg/client"
 )
 
 // CallUpdateFunction makes the API call to update a function
-func CallUpdateFunction(input interface{}) error {
-	function := input.(*v1.Function)
+func CallUpdateFunction(c client.FunctionsClient) ModelAction {
+	return func(input interface{}) error {
+		function := input.(*v1.Function)
 
-	_, err := functionManagerClient().UpdateFunction(context.TODO(), function)
-	if err != nil {
-		return formatAPIError(err, function)
+		_, err := c.UpdateFunction(context.TODO(), dispatchConfig.Organization, function)
+		if err != nil {
+			return formatAPIError(err, function)
+		}
+
+		return nil
 	}
-
-	return nil
 }
